@@ -297,7 +297,7 @@ def main(argv):
 	if failure_round == 0 :
         	response = q.get_messages(1)
 		got_messages = len(response)
-	else
+	else:
 		delay = failure_round * 60
 		print " >>>>>>>>>>>>    This will be a repeat round after failure attempt : " , failure_round , " Going to sleep for 10 + " , delay , " Seconds"  
 		time.sleep( 10 + delay )
