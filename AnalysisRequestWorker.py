@@ -1,4 +1,3 @@
-#!/usr/logal/bin/python
 import sys, getopt
 import boto.sqs
 import csv
@@ -197,6 +196,7 @@ def main(argv):
   request_bucket_name = 's3://' + request_bucket
   visibility_timeout = 1800
   environment = 'local'
+  max_failures_allowed = 4   # max times we will retry the same messages nd increase the delay will we are moving on.
 #
 #    Handle Input paramenters : FeedInRequest --qname=Queue --fname=filename with uuids
 #
@@ -280,7 +280,11 @@ def main(argv):
 #
 # Handle Messages
 #
+# Initiatl State
   round = 1
+  failure_round  = 0
+  respose = ' ' 
+  got_messages = 0
   signal.signal(signal.SIGINT, signal_handler)
   #Ignore SIG_PIPE and don't throw exceptions on it... (http://docs.python.org/library/signal.html)
   signal.signal(SIGPIPE,SIG_DFL) 
@@ -290,10 +294,15 @@ def main(argv):
 	# if round == 100000:      
 	#	print "Exiting ................."
 	#	sys.exit()
+	if failure_round == 0 :
+        	response = q.get_messages(1)
+		got_messages = len(response)
+	else
+		delay = failure_round * 60
+		print " >>>>>>>>>>>>    This will be a repeat round after failure attempt : " , failure_round , " Going to sleep for 10 + " , delay , " Seconds"  
+		time.sleep( 10 + delay )
+		failure_round +=1
 
-        response = q.get_messages(1)
-	got_messages = len(response)
-	
 	if got_messages == 0 :
 		print "No messages in queue"
                 time.sleep(20)
@@ -353,6 +362,7 @@ def main(argv):
 				os.system(gtcmd)
 			except:
 				print "Issue running gtcmd "
+				failure_round += 1 # increase failure repeat attemtps
 				pass
 			print " After gtcmd exucuted"  
 			elapsed = timeit.default_timer() - start_time
@@ -364,7 +374,7 @@ def main(argv):
 			if environment == 'cloud':
 				print " cloud Environment , push file to s3"
 	                        analysis_queue_data  = push_to_s3(request_bucket, uuid , get_filepaths(target_dir + '/' + uuid))
-				# Clean up local system as files sent to s3
+				# Clean up local system as files sent to s3 
 				print " Clean up local files as needed"
                                	return_code = cleanup_files(environment, target_dir + '/' + uuid)
 				print "after clean up"
@@ -376,9 +386,19 @@ def main(argv):
 			#
 
 			if len(analysis_queue_data) == 0:
-				print " Empty files mean no objects pushed to S3 -" , '\n' , " aleardy cleanedup so just get the emssage back to pool"
-				m.change_visibility(0)   # get the message back to the queue
-				round = 1
+				print " Empty files mean no files or partial update"
+				failure_round += 1 # increase failure repeat attemtps
+				#
+				# if we had reached the max failures on a message get it back to the pool and continue
+				# other wise continue with the same message and bigger delay trying to recover
+				if failure_round >= max_failures_allowed: 
+					# 
+					failure_round = 0        # reset failure flag so we will go to read the queue again
+					m.change_visibility(0)   # get the current message back to the queue
+					print " Clean up local files as needed"
+                                	return_code = cleanup_files(environment, target_dir + '/' + uuid)
+                                	print "after clean up"
+					round = 1
 				continue
 			else:	
 				# prepare analysis queue message and added it to the analysis queue
@@ -414,7 +434,14 @@ def main(argv):
                                 statistics_message = Message()
 				statistics_message.set_body(json_data)
                                 statistics_queue.write(statistics_message)
-				# Clean up	
+				# Clean up
+				failure_round = 0 # we did well , no failure so we can reset.
+				# We can cleanup the file system
+				if environment == 'cloud':
+					# Clean up local system as files sent to s3 
+	                                print " Clean up local files as needed"
+        	                        return_code = cleanup_files(environment, target_dir + '/' + uuid)
+					print  " after clean up"	
 				print " Delete message from Request pool as we uploaded the files"
 				m.delete()
 				print "Done with this message "
