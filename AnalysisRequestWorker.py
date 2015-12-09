@@ -301,7 +301,7 @@ def main(argv):
 		delay = failure_round * 60
 		print " >>>>>>>>>>>>    This will be a repeat round after failure attempt : " , failure_round , " Going to sleep for 10 + " , delay , " Seconds"  
 		time.sleep( 10 + delay )
-		failure_round +=1
+		# failure_round +=1   # This will be incremented at point of failures
 
 	if got_messages == 0 :
 		print "No messages in queue"
