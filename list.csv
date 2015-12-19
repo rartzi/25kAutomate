@@ -1,2 +1,2 @@
 Priority	disease_abbr	legacy_sample_id	sample_type	library_strategy	analysis_id	refassem_short_name	file_1-filesize	file_1-filename
-1	BLCA	TCGA-FD-A3SN-10A-01D-A22Z-08	10	VALIDATION	b596a645-91c1-485a-9e95-a4ca878262b8	HG19_Broad_variant	21185679	C1538.TCGA-FD-A3SN-10A-01D-A22Z-08.1.bam
+2	BLCA	TCGA-FD-A3SN-10A-01D-A22Z-08	10	VALIDATION	b596a645-91c1-485a-9e95-a4ca878262b8	HG19_Broad_variant	21185679	C1538.TCGA-FD-A3SN-10A-01D-A22Z-08.1.bam
